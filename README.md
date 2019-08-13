@@ -18,7 +18,7 @@ Figure 1 in the paper can be reproduced with `src/notebooks/synthetic_data_exper
 
 For instance, the following command would train an MLP on MNIST using WeightNorm with the proposed initialization:
 
-`cd src && python -m train --dataset mnist --nn mlp --weight_norm --init proposed_orthogonal`
+`cd src && python -m train --dataset mnist --nn mlp --weight_norm --init orthogonal_proposed`
 
 
 ## Citation

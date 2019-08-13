@@ -31,31 +31,14 @@ parser.add_argument('--wrn_k', default=2, type=int,
                     help='k for WRN (widening factor)')
 parser.add_argument('--wrn_reduced_memory', default=False, action='store_true',
                     help='Use stride=2 in WRN\'s conv1 to reduce memory footprint in very deep nets')
-parser.add_argument('--init', default='proposed',
-                    choices=['traditional', 'orthogonal',
-                             'traditional_datadep', 'orthogonal_datadep',
-                             'proposed', 'proposed_orthogonal',
-                             # ====== ^ INITS IN THE PAPER ^ ====== #
-                             'proposed_v2', 'proposed_v2_orthogonal',
-                             'proposed_v3', 'proposed_v3_orthogonal',
-                             'proposed_v4', 'proposed_v4_orthogonal',
-                             'proposed_v5', 'proposed_v5_orthogonal',
-                             'proposed_v6', 'proposed_v6_orthogonal',
-                             'proposed_v7', 'proposed_v7_orthogonal',
-                             'proposed_v8', 'proposed_v8_orthogonal',
-                             'proposed_v9', 'proposed_v9_orthogonal',  # sqrt(2) for CNNs
-                             'proposed_v10', 'proposed_v10_orthogonal',
-                             'proposed_v11', 'proposed_v11_orthogonal',
-                             'proposed_v12', 'proposed_v12_orthogonal',
-                             'proposed_v13', 'proposed_v13_orthogonal'  # sqrt(2) for MLPs
-                             ],
+parser.add_argument('--init', default='orthogonal_proposed',
+                    choices=['he', 'orthogonal',
+                             'he_datadep', 'orthogonal_datadep',
+                             'he_proposed', 'orthogonal_proposed'],
                     help='Initialization scheme.\n'
-                         'traditional/orthogonal: pytorch default WN init with He/orthogonal init for weights\n'
-                         '{traditional/orthogonal}_datadep: data-dependent WN init with He/orthogonal init for '
-                         'weights\n'
-                         'proposed/proposed_orthogonal: proposed WN init with He/orthogonal init for weights.\n'
-                         'Variants v2-13 of the proposed init are kept for completeness, but were not used in '
-                         'the paper.')
+                         'he/orthogonal: pytorch default WN init with He/orthogonal init for weights\n'
+                         '{he/orthogonal}_datadep: data-dependent WN init with He/orthogonal init for weights\n'
+                         'proposed_{he/orthogonal}: proposed WN init with He/orthogonal init for weights.\n')
 parser.add_argument('--init_extra_param', default=None, choices=[None, 'hanin'],
                     help='extra param for WRN init; used for baselines in the 10k layer experiments mostly')
 parser.add_argument('--weight_norm', default=False, action='store_true',
@@ -113,6 +96,10 @@ parser.add_argument('--hessian', default=False, action='store_true',
 
 
 args = parser.parse_args()
+
+# Make sure that we chose a valid init scheme
+if 'proposed' in args.init or 'datadep' in args.init:
+    assert args.weight_norm, "'{}' init will only work with Weight Normalized networks".format(args.init)
 
 if args.mini_batch_size is None:
     args.mini_batch_size = args.batch_size

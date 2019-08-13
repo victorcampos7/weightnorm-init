@@ -218,8 +218,7 @@ class WideResNet(LayerWiseLRModule):
 
         # Residual blocks
         stage_names = ['conv1', 'conv2', 'conv3', 'conv4']
-        stage_size = [16, 16 * k, 32 * k, 64 * k]  # conv1..4 in the paper, but scaling conv1 with k as well
-        # shortcurt_lr_scaling = {}
+        stage_size = [16, 16 * k, 32 * k, 64 * k]  # conv1..4 in the paper
         resblock_count_list = []
         resblock_conv2_g_gain_fn = self.get_resblock_conv2_g_gain_fn(init_extra_param)
         for stage_idx in range(1, 4):
@@ -228,9 +227,6 @@ class WideResNet(LayerWiseLRModule):
             stage_layers = []
             for block_idx in range(num_blocks):
                 resblock_count += 1
-                # if block_idx == 0:
-                #     shortcurt_lr_scaling[stage_name] = (1+num_resblocks-resblock_count)**(-0.5)
-                #     shortcurt_lr_scaling[stage_name] = (1 + num_blocks - resblock_count) ** (-0.5)
                 stride = 2 if (stage_idx in [2, 3] and block_idx == 0) else 1  # corresponds to conv3,4 in the paper
                 input_dims = stage_size[stage_idx - 1] if block_idx == 0 else stage_size[stage_idx]
                 layer = WRNResBlock(input_dims, stage_size[stage_idx], stride=stride, batch_norm=self.use_bn)
@@ -242,18 +238,9 @@ class WideResNet(LayerWiseLRModule):
                 stage_layers.append(layer)
             resblock_count_list.append(resblock_count)
             self.add_module(stage_name, nn.Sequential(*stage_layers))
-        # assert resblock_count == num_resblocks  # best init
         assert sum(resblock_count_list) == num_resblocks
 
         self.final_layer = nn.Linear(stage_size[-1], num_classes)
-
-        # # Build dict with param->lr_multiplier mapping
-        # if 'proposed' in init:
-        #     for stage_name in shortcurt_lr_scaling:
-        #         for name, param in self.named_parameters():
-        #             if stage_name in name and 'shortcut' in name:
-        #                 print('Setting %s LR multiplier to %f' % (name, shortcurt_lr_scaling[stage_name]))
-        #                 self.lr_mult_dict[param] = shortcurt_lr_scaling[stage_name]
 
     def forward(self, x):
         # CNN backbone
@@ -291,9 +278,7 @@ class WideResNet(LayerWiseLRModule):
 
     def _generate_init_description(self, init):
         self.init_extra_lines = ''
-        if 'proposed_v' in init:
-            raise ValueError("WRN+WN is only ready for 'proposed_orthogonal' init (v1)")
-        if 'proposed' in init:  # v1
+        if 'proposed' in init:
             self.init_extra_lines += '\n\n=================================================================='
             self.init_extra_lines += '\nInit: proposed (with fan-in/fan-out correction)'
             self.init_extra_lines += '\n      with stage-wise normalization'
@@ -311,14 +296,15 @@ if __name__ == '__main__':
     # Test MLP
     print('Testing MLP...', end=' ')
     x_mlp = torch.ones((64, 28, 28))
-    mlp = MLP(input_size=28*28, hidden_size=32, num_layers=2, num_classes=10, weight_norm=True, init='proposed')
+    mlp = MLP(input_size=28*28, hidden_size=32, num_layers=2, num_classes=10, weight_norm=True, init='he_proposed')
     mlp(x_mlp)
     print('Success!')
 
     # Test CNN
     print('Testing CNN...', end=' ')
     x_cnn = torch.ones((64, 3, 28, 28))  # [b, h, w, c]
-    cnn = CNN(input_size=(28, 28, 3), hidden_size=32, num_layers=2, num_classes=10, weight_norm=True, init='proposed')
+    cnn = CNN(input_size=(28, 28, 3), hidden_size=32, num_layers=2, num_classes=10, weight_norm=True,
+              init='he_proposed')
     cnn(x_cnn)
     print('Success!')
 
@@ -326,7 +312,7 @@ if __name__ == '__main__':
     print('Testing WN-WideResNet...', end=' ')
     x_wrn = torch.ones((64, 3, 28, 28))  # [b, h, w, c]
     wrn = WideResNet(input_size=(28, 28, 3), num_blocks=3, num_classes=10, weight_norm=True, batch_norm=False,
-                     init='proposed')
+                     init='he_proposed')
     wrn(x_wrn)
     print('Success!')
 
@@ -342,7 +328,7 @@ if __name__ == '__main__':
     print('Testing WN-ResNet...', end=' ')
     x_wrn = torch.ones((64, 3, 32, 32))  # [b, h, w, c]
     wrn = ResNet(input_size=(32, 32, 3), hidden_size=16, num_blocks=3, num_classes=10,
-                 weight_norm=True, batch_norm=False, init='proposed')
+                 weight_norm=True, batch_norm=False, init='he_proposed')
     wrn(x_wrn)
     print('Success!')
 

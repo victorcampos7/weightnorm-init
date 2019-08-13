@@ -22,20 +22,6 @@ def _calculate_cnn_fan_in_and_fan_out(tensor):
     return num_input_fmaps, num_output_fmaps, receptive_field_size
 
 
-def proposed_init(layer):
-    """
-    He init which preserves the norm in the backwards pass for ReLU non-linearities:
-        w ~ N(0, 2/fan_out)
-    """
-    w, b = layer.weight, layer.bias
-    _, fan_out = _calculate_fan_in_and_fan_out(w)
-    gain = math.sqrt(2.0)
-    std = gain / math.sqrt(fan_out)
-    with torch.no_grad():
-        w.normal_(0, std)
-        b.zero_()
-
-
 def proposed_init_wn(layer):
     """
     He init which preserves the norm in the forward pass for weight-normalized ReLU networks:
@@ -61,51 +47,6 @@ def proposed_weight_norm_g_init(wn_layer, gain=2., version=1):
         wn_layer.weight_g = Parameter(torch.ones_like(wn_layer.weight_g) * math.sqrt(gain))
     else:
         raise ValueError("proposed_weight_norm_g_init: version should be in {1, 13}")
-
-
-def proposed_weight_norm_cnn_g_init(wn_layer, gain=2., version=2):
-    """
-    Initialize WN's g to preserve the norm of both forward and backward pass
-    """
-    i, o, rf = _calculate_cnn_fan_in_and_fan_out(wn_layer.weight)
-    c1 = gain * i * rf / o
-    c2 = gain * i / (o * rf)
-    if version == 2:
-        correction = 0.5 * math.sqrt(c1) + 0.5 * math.sqrt(c2)
-    elif version == 3:
-        correction = math.sqrt(0.5 * c1 + 0.5 * c2)
-    elif version == 4:
-        correction = math.sqrt(math.sqrt(c1 * c2))
-    elif version == 5:  # new_v2
-        c1 = gain * i * rf / o
-        c2 = gain * o * rf / i
-        correction = 0.5 * math.sqrt(c1) + 0.5 * math.sqrt(c2)
-    elif version == 6:  # new_v3
-        c1 = gain * i * rf / o
-        c2 = gain * o * rf / i
-        correction = math.sqrt(0.5 * c1 + 0.5 * c2)
-    elif version == 7:  # new_v4
-        correction = math.sqrt(gain * rf)
-    elif version == 8:
-        correction = math.sqrt(gain * i * rf / o)
-    elif version == 9:
-        backward_factor = gain
-        correction = math.sqrt(backward_factor)
-    elif version == 10:
-        forward_factor = gain * i * rf / o
-        backward_factor = gain
-        correction = 0.5 * math.sqrt(forward_factor) + 0.5 * math.sqrt(backward_factor)
-    elif version == 11:
-        forward_factor = gain * i * rf / o
-        backward_factor = gain
-        correction = math.sqrt(0.5 * forward_factor + 0.5 * backward_factor)
-    elif version == 12:
-        forward_factor = gain * i * rf / o
-        backward_factor = gain
-        correction = math.sqrt(math.sqrt(forward_factor * backward_factor))
-    else:
-        raise ValueError("proposed_weight_norm_cnn_g_init: version should be in 2..12")
-    wn_layer.weight_g = Parameter(torch.ones_like(wn_layer.weight_g) * correction)
 
 
 def data_dependent_weight_norm_g_init(wn_layer, sample_batch):
@@ -151,38 +92,31 @@ def init_and_maybe_normalize_layer(layer, init, weight_norm, sample_batch=None, 
             and initialize them accordingly
         (b) No WN, or WN with default or proposed init: simply add WN and then initialize weights
     """
-    # 1) Initialize layer weights. If weight_norm=False, there's nothing else to do.
-    if 'traditional' in init:  # traditional, traditional_datadep
+    # 1) Initialize layer weights
+    if init in ['he', 'he_datadep']:
         kaiming_normal_(layer.weight)
         zeros_(layer.bias)
-    elif 'orthogonal' in init:  # orthogonal, orthogonal_datadep, orthogonal_proposed
+    elif init in ['orthogonal', 'orthogonal_datadep', 'orthogonal_proposed']:
         orthogonal_(layer.weight)
         zeros_(layer.bias)
-    elif init in ['proposed'] + ['proposed_v%d' % v for v in range(2, 13 + 1)]:
-        if weight_norm:
-            proposed_init_wn(layer)
-        else:
-            proposed_init(layer)
+    elif init == 'he_proposed':
+        proposed_init_wn(layer)
     else:
         raise ValueError('Unsupported init:', init)
 
+    # 2) Optionally, add WeightNorm and override the default init if needed
     if weight_norm:
         # Add WN
         layer = WeightNorm(layer)
-        # Case (a): override default WN init if needed (data-independent)
-        if 'datadep' not in init:
-            if 'proposed_v' in init:
-                version = int(init[len("proposed_v"):].split('_')[0])
-                if version == 13:
-                    proposed_weight_norm_g_init(layer, gain=g_gain, version=version)
-                else:
-                    proposed_weight_norm_cnn_g_init(layer, gain=g_gain, version=version)
-            elif 'proposed' in init:
-                proposed_weight_norm_g_init(layer, gain=g_gain)
+        # Case (a): proposed init
+        if 'proposed' in init:
+            proposed_weight_norm_g_init(layer, gain=g_gain)
         # Case (b): data-dependent init
-        else:
+        elif 'datadep' in init:
             assert sample_batch is not None
             layer, sample_batch = data_dependent_weight_norm_g_init(layer, sample_batch)
+        # Case (c): keep PyTorch's default WN init
+
     return layer, sample_batch
 
 
