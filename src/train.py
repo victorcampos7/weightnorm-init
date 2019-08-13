@@ -38,7 +38,7 @@ parser.add_argument('--init', default='orthogonal_proposed',
                     help='Initialization scheme.\n'
                          'he/orthogonal: pytorch default WN init with He/orthogonal init for weights\n'
                          '{he/orthogonal}_datadep: data-dependent WN init with He/orthogonal init for weights\n'
-                         'proposed_{he/orthogonal}: proposed WN init with He/orthogonal init for weights.\n')
+                         '{he/orthogonal}_proposed: proposed WN init with He/orthogonal init for weights')
 parser.add_argument('--init_extra_param', default=None, choices=[None, 'hanin'],
                     help='extra param for WRN init; used for baselines in the 10k layer experiments mostly')
 parser.add_argument('--weight_norm', default=False, action='store_true',
