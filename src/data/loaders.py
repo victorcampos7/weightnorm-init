@@ -48,11 +48,11 @@ def mnist(batch_size, val_fraction=0.1):
 
     # Create data loaders
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True,
-                                              num_workers=2, pin_memory=True)
+                                              num_workers=0, pin_memory=True)
     validloader = torch.utils.data.DataLoader(valset, batch_size=batch_size, shuffle=False,
-                                              num_workers=2, pin_memory=True)
+                                              num_workers=0, pin_memory=True)
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False,
-                                             num_workers=2, pin_memory=True)
+                                             num_workers=0, pin_memory=True)
 
     return trainloader, validloader, testloader, num_classes
 
@@ -88,11 +88,11 @@ def cifar10(batch_size, val_fraction=0.1, cutout=False):
 
     # Create data loaders
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True,
-                                              num_workers=2, pin_memory=True)
+                                              num_workers=0, pin_memory=True)
     validloader = torch.utils.data.DataLoader(valset, batch_size=batch_size, shuffle=False,
-                                              num_workers=2, pin_memory=True)
+                                              num_workers=0, pin_memory=True)
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False,
-                                             num_workers=2, pin_memory=True)
+                                             num_workers=0, pin_memory=True)
 
     return trainloader, validloader, testloader, num_classes
 
@@ -129,11 +129,11 @@ def cifar100(batch_size, val_fraction=0.1, cutout=False):
 
     # Create data loaders
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True,
-                                              num_workers=2, pin_memory=True)
+                                              num_workers=0, pin_memory=True)
     validloader = torch.utils.data.DataLoader(valset, batch_size=batch_size, shuffle=False,
-                                              num_workers=2, pin_memory=True)
+                                              num_workers=0, pin_memory=True)
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False,
-                                             num_workers=2, pin_memory=True)
+                                             num_workers=0, pin_memory=True)
 
     return trainloader, validloader, testloader, num_classes
 
